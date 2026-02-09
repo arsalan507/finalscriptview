@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BCH & 2XG — Script Production Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0d1117; color: #e6edf3; }
+
+  /* Header */
+  .header { background: #161b22; border-bottom: 1px solid #30363d; padding: 16px 24px; position: sticky; top: 0; z-index: 100; }
+  .header h1 { font-size: 20px; font-weight: 600; color: #f0f6fc; }
+  .header-sub { font-size: 13px; color: #8b949e; margin-top: 4px; }
+
+  /* Stats bar */
+  .stats-bar { display: flex; gap: 16px; padding: 16px 24px; background: #161b22; border-bottom: 1px solid #30363d; flex-wrap: wrap; }
+  .stat-card { background: #21262d; border: 1px solid #30363d; border-radius: 8px; padding: 12px 20px; min-width: 140px; }
+  .stat-num { font-size: 28px; font-weight: 700; color: #58a6ff; }
+  .stat-num.green { color: #3fb950; }
+  .stat-num.orange { color: #d29922; }
+  .stat-num.purple { color: #bc8cff; }
+  .stat-label { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* Search area */
+  .search-area { padding: 16px 24px; background: #0d1117; border-bottom: 1px solid #30363d; }
+  .search-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .search-input { flex: 1; min-width: 300px; padding: 10px 14px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 14px; outline: none; }
+  .search-input:focus { border-color: #58a6ff; box-shadow: 0 0 0 3px rgba(88,166,255,0.15); }
+  .search-input::placeholder { color: #484f58; }
+  .filter-select { padding: 10px 14px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 14px; outline: none; cursor: pointer; }
+  .filter-select:focus { border-color: #58a6ff; }
+  .search-hint { font-size: 12px; color: #484f58; margin-top: 8px; }
+  .search-hint span { color: #8b949e; background: #21262d; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+
+  /* Table */
+  .table-wrapper { overflow-x: auto; padding: 0 24px 24px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+  thead th { background: #161b22; color: #8b949e; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; position: sticky; top: 76px; z-index: 10; border-bottom: 2px solid #30363d; white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th:hover { color: #e6edf3; }
+  tbody tr { border-bottom: 1px solid #21262d; transition: background 0.15s; }
+  tbody tr:hover { background: #161b22; }
+  tbody td { padding: 10px 12px; vertical-align: middle; }
+  tbody tr.hidden { display: none; }
+
+  /* Batch colors */
+  .batch-tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .batch-b1 { background: #1f3d2d; color: #3fb950; }
+  .batch-b2 { background: #2d1f3d; color: #bc8cff; }
+  .batch-b3 { background: #3d2d1f; color: #d29922; }
+  .batch-b4 { background: #1f2d3d; color: #58a6ff; }
+  .batch-power { background: #3d1f2d; color: #f85149; }
+  .batch-blocker { background: #2d3d1f; color: #7ee787; }
+  .batch-2xg { background: #3d3d1f; color: #e3b341; }
+  .batch-viral { background: #2d1f1f; color: #ff7b72; }
+  .batch-parent { background: #1f2d2d; color: #56d4dd; }
+  .batch-series { background: #3d2d3d; color: #d2a8ff; }
+
+  /* Profile select */
+  .profile-select { padding: 4px 8px; background: #21262d; border: 1px solid #30363d; border-radius: 4px; color: #e6edf3; font-size: 12px; cursor: pointer; width: 100%; }
+
+  /* Checkboxes */
+  .cb-cell { text-align: center; }
+  .cb-cell input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #3fb950; }
+
+  /* Character tags */
+  .char-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .char-tag { display: inline-block; padding: 2px 8px; background: #21262d; border: 1px solid #30363d; border-radius: 12px; font-size: 11px; color: #8b949e; white-space: nowrap; }
+
+  /* Match highlight */
+  tr.match-highlight { background: #1a2332 !important; }
+  tr.match-highlight td { color: #fff; }
+
+  /* Reset button */
+  .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #30363d; background: #21262d; color: #e6edf3; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+  .btn:hover { background: #30363d; border-color: #484f58; }
+  .btn-danger { border-color: #f85149; color: #f85149; }
+  .btn-danger:hover { background: #3d1f1f; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .stats-bar { gap: 8px; }
+    .stat-card { min-width: 100px; padding: 8px 12px; }
+    .stat-num { font-size: 22px; }
+    .search-input { min-width: 200px; }
+    table { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>BCH & 2XG — Script Production Dashboard</h1>
+  <div class="header-sub">Track scripts, hooks, shoots & profile assignments | Data saved in browser</div>
+</div>
+
+<div class="stats-bar" id="stats-bar">
+  <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total Scripts</div></div>
+  <div class="stat-card"><div class="stat-num green" id="stat-hooks">0</div><div class="stat-label">Hooks Done</div></div>
+  <div class="stat-card"><div class="stat-num orange" id="stat-shot">0</div><div class="stat-label">Shot Done</div></div>
+  <div class="stat-card"><div class="stat-num purple" id="stat-pending">0</div><div class="stat-label">Pending</div></div>
+</div>
+
+<div class="search-area">
+  <div class="search-row">
+    <input type="text" class="search-input" id="search-input" placeholder="Smart search: try '1 father and 1 son' or '2 friends' or '1 kid and 1 mother'...">
+    <select class="filter-select" id="filter-batch">
+      <option value="">All Batches</option>
+      <option value="BCH Batch 1">BCH Batch 1</option>
+      <option value="BCH Batch 2">BCH Batch 2</option>
+      <option value="BCH Batch 3">BCH Batch 3</option>
+      <option value="BCH Batch 4">BCH Batch 4</option>
+      <option value="Power Scripts">Power Scripts</option>
+      <option value="Blocker Scripts">Blocker Scripts</option>
+      <option value="2XG Scripts 1-5">2XG Scripts 1-5</option>
+      <option value="2XG Scripts 6-10">2XG Scripts 6-10</option>
+      <option value="Viral Scripts">Viral Scripts</option>
+      <option value="Parent Viral">Parent Viral</option>
+      <option value="Appa Please!">Appa Please!</option>
+    </select>
+    <select class="filter-select" id="filter-status">
+      <option value="">All Status</option>
+      <option value="pending">Pending (Not Shot)</option>
+      <option value="hooks-done">Hooks Done</option>
+      <option value="shot-done">Shot Done</option>
+    </select>
+    <button class="btn btn-danger" onclick="resetAll()">Reset All</button>
+  </div>
+  <div class="search-hint">
+    Smart search examples: <span>1 son and father</span> <span>2 friends</span> <span>1 mother and 1 kid</span> <span>syed bhai alone</span> <span>arsalan</span> <span>zubair</span> <span>appa please</span>
+  </div>
+</div>
+
+<div class="table-wrapper">
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Script Title</th>
+      <th>Batch</th>
+      <th>Characters Needed</th>
+      <th>Duration</th>
+      <th>Platform</th>
+      <th>Language</th>
+      <th>Product</th>
+      <th>Profile</th>
+      <th>Hooks</th>
+      <th>Shot</th>
+    </tr>
+  </thead>
+  <tbody id="table-body"></tbody>
+</table>
+</div>
+
+<script>
+// ========== SCRIPT DATA ==========
+const scripts = [
+  // BCH Batch 1 (Scripts 1-5)
+  { id: "B1-01", title: "₹33 Per Day Secret — The Chai Math", batch: "BCH Batch 1", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B1-02", title: "Yaarige Costly? — The Comparison Shock", batch: "BCH Batch 1", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B1-03", title: "EMI Rejected Twist", batch: "BCH Batch 1", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B1-04", title: "Amma Ka Speed Lock", batch: "BCH Batch 1", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Amma", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "mother", "amma", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B1-05", title: "Helmet Free Drama", batch: "BCH Batch 1", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+
+  // BCH Batch 2 (Scripts 6-10)
+  { id: "B2-06", title: "11 PM Emergency Call — Midnight Savior", batch: "BCH Batch 2", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "General E-Cycle" },
+  { id: "B2-07", title: "48 Hours vs 48 Days — Service Split", batch: "BCH Batch 2", characters: ["Syed Bhai", "Teen Boy 1 (Online Buyer)", "Teen Boy 2"], charSearch: ["syed bhai", "teen boy", "friend", "buyer"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "General E-Cycle" },
+  { id: "B2-08", title: "Summer Break Challenge", batch: "BCH Batch 2", characters: ["Syed Bhai", "Teen Boy 1", "Teen Boy 2"], charSearch: ["syed bhai", "teen boy", "kid", "friend"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "General E-Cycle" },
+  { id: "B2-09", title: "Cycle Attendance Register", batch: "BCH Batch 2", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B2-10", title: "Group Ride Pressure — FOMO", batch: "BCH Batch 2", characters: ["Syed Bhai", "Teen Boy 1", "Teen Boy 2"], charSearch: ["syed bhai", "teen boy", "kid", "friend"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "General E-Cycle" },
+
+  // BCH Batch 3 (Scripts 11-15)
+  { id: "B3-11", title: "Auto vs E-Cycle Race — Bangalore Traffic", batch: "BCH Batch 3", characters: ["Syed Bhai", "Teen Boy 1 (Auto Kid)", "Teen Boy 2 (E-Cycle Kid)"], charSearch: ["syed bhai", "teen boy", "kid", "friend", "racer"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "EMotorad T-Rex+" },
+  { id: "B3-12", title: "Uphill Beast — The Hill Challenge", batch: "BCH Batch 3", characters: ["Syed Bhai", "Teen Boy 1 (Doubter)", "Teen Boy 2 (Rider)"], charSearch: ["syed bhai", "teen boy", "kid", "friend", "doubter"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "EMotorad T-Rex+" },
+  { id: "B3-13", title: "Last Piece Drama — Scarcity", batch: "BCH Batch 3", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B3-14", title: "Summer Offer Missed — Regret", batch: "BCH Batch 3", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B3-15", title: "Amazon Unboxing Horror", batch: "BCH Batch 3", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+
+  // BCH Batch 4 (Scripts 16-20)
+  { id: "B4-16", title: "WhatsApp Price War — Screenshot Trap", batch: "BCH Batch 4", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B4-17", title: "Phone Jail Challenge — 30 Days Without Screen", batch: "BCH Batch 4", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Son (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "B4-18", title: "Fortnite vs Freedom — Gamer Kid", batch: "BCH Batch 4", characters: ["Syed Bhai", "Father (Teen Boy 1)", "Gamer Kid (Teen Boy 2)"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy", "gamer"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "EMotorad T-Rex+" },
+  { id: "B4-19", title: "Ajji's Market Ride — Grandparent Freedom", batch: "BCH Batch 4", characters: ["Syed Bhai", "Son (Teen Boy 1, phone)", "Ajji (Teen Boy 2, costume)"], charSearch: ["syed bhai", "son", "teen boy", "ajji", "grandparent", "grandmother", "elderly"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "EMotorad E-Cycle" },
+  { id: "B4-20", title: "New Kid in School — Social Status Cycle", batch: "BCH Batch 4", characters: ["Syed Bhai", "Uncool Kid (Teen Boy 1)", "New Cool Kid (Teen Boy 2)", "Extras"], charSearch: ["syed bhai", "teen boy", "kid", "friend", "school kid", "cool kid"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+
+  // Power Scripts (P1-P5)
+  { id: "P-01", title: "Bhai vs Bhai — Sibling Power War", batch: "Power Scripts", characters: ["Syed Bhai", "Father", "Older Kid (Anna)", "Younger Kid (Thambi)"], charSearch: ["syed bhai", "father", "kid", "brother", "sibling", "anna", "thambi", "son"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "P-02", title: "Appa's Doubt — Skeptic Father", batch: "Power Scripts", characters: ["Syed Bhai", "Father", "Kid 1", "Kid 2"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "P-03", title: "25 KMPH Proof — Speedometer Test", batch: "Power Scripts", characters: ["Syed Bhai", "Father", "Kid 1", "Kid 2"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "P-04", title: "Uphill Challenge — Gradient Test", batch: "Power Scripts", characters: ["Syed Bhai", "Father", "Kid 1", "Kid 2"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "P-05", title: "3 Years Later — Long-Term Durability", batch: "Power Scripts", characters: ["Syed Bhai", "Father", "Kid 1", "Kid 2", "Older Rider"], charSearch: ["syed bhai", "father", "kid", "son", "teen boy", "older rider"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+
+  // Blocker-to-Buyer Scripts (B1-B10)
+  { id: "BK-01", title: "Servicing Pain → Service King", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Amma", "Kid"], charSearch: ["syed bhai", "father", "mother", "amma", "kid", "son", "family"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-02", title: "Too Expensive → Daily Savings Math", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Kid"], charSearch: ["syed bhai", "father", "kid", "son"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-03", title: "Won't Use After 3 Months", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Kid"], charSearch: ["syed bhai", "father", "kid", "son"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-04", title: "Safety Fear — Traffic → Safety Demo", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Amma", "Kid"], charSearch: ["syed bhai", "father", "mother", "amma", "kid", "son", "family"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-05", title: "Speed Too Fast → Speed Lock Demo", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Amma", "Kid"], charSearch: ["syed bhai", "father", "mother", "amma", "kid", "son", "family"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-06", title: "Online Is Cheaper → The Hidden Cost", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Kid"], charSearch: ["syed bhai", "father", "kid", "son"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-07", title: "Grandparents Don't Approve", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Ajji/Thatha", "Kid"], charSearch: ["syed bhai", "father", "grandparent", "grandmother", "grandfather", "ajji", "thatha", "kid", "son", "elderly"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-08", title: "Battery Will Fail (OLA Fear)", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Kid"], charSearch: ["syed bhai", "father", "kid", "son"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-09", title: "EMI Not Approved → The EMI Hack", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Kid"], charSearch: ["syed bhai", "father", "kid", "son"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+  { id: "BK-10", title: "Just a Toy/Distraction", batch: "Blocker Scripts", characters: ["Syed Bhai", "Father", "Amma", "Kid"], charSearch: ["syed bhai", "father", "mother", "amma", "kid", "son", "family"], duration: "50-59s", platform: "IG Reel", language: "Kannada", product: "Aoki Flex CR" },
+
+  // 2XG Content Paralysis Scripts 1-5
+  { id: "2X-01", title: "₹1Cr Revenue. ₹0 Online Presence.", batch: "2XG Scripts 1-5", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "50s", platform: "IG Reel / YT Short", language: "Hindi", product: "2XG Brand" },
+  { id: "2X-02", title: "7 Excuses Business Owners Make", batch: "2XG Scripts 1-5", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "10 slides", platform: "IG Carousel", language: "Hindi", product: "2XG Brand" },
+  { id: "2X-03", title: "Content Nahi Banaunga, Competitor Se Jealous", batch: "2XG Scripts 1-5", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "45s", platform: "IG Reel / YT Short", language: "Hindi", product: "2XG Brand" },
+  { id: "2X-04", title: "Pehla Video Perfect Nahi Hoga", batch: "2XG Scripts 1-5", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "55s", platform: "IG Reel / YT Short", language: "Hindi", product: "2XG Brand" },
+  { id: "2X-05", title: "Yeh Hai Asli Process — Day 1 Se Aaj Tak", batch: "2XG Scripts 1-5", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "7 frames", platform: "IG Stories", language: "Hindi", product: "2XG Brand" },
+
+  // 2XG Content Paralysis Scripts 6-10
+  { id: "2X-06", title: "Content System Chahiye, Ideas Nahi", batch: "2XG Scripts 6-10", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "55s", platform: "IG Reel / YT Short", language: "Hindi", product: "2XG Brand" },
+  { id: "2X-07", title: "30-Day Content Playbook for Retail Chains", batch: "2XG Scripts 6-10", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "10 slides", platform: "IG Carousel", language: "Hindi", product: "2XG Brand" },
+  { id: "2X-08", title: "6 Mahine Kuch Post Nahi — Transformation", batch: "2XG Scripts 6-10", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "58s", platform: "IG Reel / YT Short", language: "Hindi", product: "2XG Brand" },
+  { id: "2X-09", title: "Why Business Owners Can't Start Content", batch: "2XG Scripts 6-10", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "9 min", platform: "YouTube", language: "Hindi", product: "2XG Brand" },
+  { id: "2X-10", title: "Kal Se Start Karunga — Kal Kabhi Nahi Aata", batch: "2XG Scripts 6-10", characters: ["Solo (You/Founder)"], charSearch: ["solo", "founder", "single person", "alone"], duration: "Caption", platform: "IG / LinkedIn", language: "Hindi", product: "2XG Brand" },
+
+  // BCH Viral Scripts (V1-V10)
+  { id: "V-01", title: "Duplicate Cycle Mafia — The Fake Cycle Mafia", batch: "Viral Scripts", characters: ["Arsalan", "Baba", "Sanjay", "Babita (VO)", "2 Kids"], charSearch: ["arsalan", "baba", "sanjay", "babita", "kid", "child"], duration: "52s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-02", title: "Appa Ge Thanks Helu — Say Thanks to Dad", batch: "Viral Scripts", characters: ["Zubair", "Syed", "Sami", "Kids Ensemble", "Walk-in Family"], charSearch: ["zubair", "syed", "sami", "kid", "father", "son", "family"], duration: "58s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-03", title: "Best Friend Da Last Ride", batch: "Viral Scripts", characters: ["Syed", "Arsalan", "Baba", "Sami", "Babita (VO)"], charSearch: ["syed", "arsalan", "baba", "sami", "babita", "friend"], duration: "62s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-04", title: "Aa Dinagalu — Those Days", batch: "Viral Scripts", characters: ["Baba", "Sanjay", "Sami", "Kids Ensemble", "Babita (VO)"], charSearch: ["baba", "sanjay", "sami", "babita", "kid", "father", "son"], duration: "55s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-05", title: "Appa Ge Ondu Hug — One Hug for Dad", batch: "Viral Scripts", characters: ["Syed", "Zubair", "Mujahid", "Babita (VO)", "Sanjay"], charSearch: ["syed", "zubair", "mujahid", "babita", "sanjay", "father", "son"], duration: "60s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-06", title: "Amma Maadiddu — What Mom Did", batch: "Viral Scripts", characters: ["Arsalan", "Walk-in Family", "Babita (VO)", "Sanjay", "Baba", "Kids Ensemble"], charSearch: ["arsalan", "babita", "sanjay", "baba", "mother", "amma", "kid", "family"], duration: "55s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-07", title: "Ibbaru Appa — Onde Question", batch: "Viral Scripts", characters: ["Zubair", "Baba", "Sami", "Appi", "Kids Ensemble"], charSearch: ["zubair", "baba", "sami", "appi", "father", "kid", "son"], duration: "55s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-08", title: "Ondu Pedal — Ondu Life", batch: "Viral Scripts", characters: ["Mujahid", "Syed", "Babita (VO)"], charSearch: ["mujahid", "syed", "babita", "friend"], duration: "52s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-09", title: "Fake Cycle Hushaaru!", batch: "Viral Scripts", characters: ["Arsalan", "Baba", "Mujahid", "Sanjay", "Sami"], charSearch: ["arsalan", "baba", "mujahid", "sanjay", "sami"], duration: "57s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "V-10", title: "Screen Maga vs Cycle Maga", batch: "Viral Scripts", characters: ["Syed", "Sami", "Appi", "Kids Ensemble"], charSearch: ["syed", "sami", "appi", "kid", "child", "father"], duration: "58s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+
+  // BCH Parent-Targeted Viral Scripts (PT1-PT10)
+  { id: "PT-01", title: "Appa, Nanna Friends Ella Hogthare...", batch: "Parent Viral", characters: ["Father", "Kid"], charSearch: ["father", "dad", "appa", "kid", "son", "child"], duration: "45-55s", platform: "IG Reel", language: "Kannada", product: "EMotorad X1" },
+  { id: "PT-02", title: "Rs.999 ge E-Cycle? Hege Possible?", batch: "Parent Viral", characters: ["BCH Staff"], charSearch: ["staff", "founder", "solo"], duration: "40-50s", platform: "IG Reel", language: "Kannada", product: "EMotorad X1" },
+  { id: "PT-03", title: "Naanu Kotta Gift — Avnu Kotta Smile", batch: "Parent Viral", characters: ["Father", "Kid", "BCH Staff"], charSearch: ["father", "dad", "appa", "kid", "son", "staff"], duration: "45-55s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "PT-04", title: "Phone Bidi, Life Kodi", batch: "Parent Viral", characters: ["Father", "Kid"], charSearch: ["father", "dad", "appa", "kid", "son"], duration: "50-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad X1" },
+  { id: "PT-05", title: "Yaarige Kelona? — BCH Ge Kelri", batch: "Parent Viral", characters: ["Father", "Kid", "BCH Staff"], charSearch: ["father", "dad", "appa", "kid", "son", "staff"], duration: "45-55s", platform: "IG Reel", language: "Kannada", product: "Various E-Cycles" },
+  { id: "PT-06", title: "Adu Waste Aagalla — Guarantee", batch: "Parent Viral", characters: ["Father", "Kid", "BCH Staff"], charSearch: ["father", "dad", "appa", "kid", "son", "staff"], duration: "45-55s", platform: "IG Reel", language: "Kannada", product: "EMotorad X1" },
+  { id: "PT-07", title: "Doodle Yaak Bekku?", batch: "Parent Viral", characters: ["Father", "Kid", "BCH Staff"], charSearch: ["father", "dad", "appa", "kid", "son", "staff"], duration: "40-50s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "PT-08", title: "Test Ride Magic — Maga Na Face Nodri", batch: "Parent Viral", characters: ["Father", "Kid", "BCH Staff"], charSearch: ["father", "dad", "appa", "kid", "son", "maga", "staff"], duration: "35-45s", platform: "IG Reel", language: "Kannada", product: "Various E-Cycles" },
+  { id: "PT-09", title: "Appa Ge Thanks — 1 Year Later", batch: "Parent Viral", characters: ["Father", "Kid"], charSearch: ["father", "dad", "appa", "kid", "son"], duration: "50-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad X1" },
+  { id: "PT-10", title: "1 Video = 4 Customers — BCH Documentary", batch: "Parent Viral", characters: ["BCH Staff", "Customers"], charSearch: ["staff", "founder", "customer", "family"], duration: "55-65s", platform: "IG Reel", language: "Kannada", product: "Various E-Cycles" },
+
+  // Mini-Series: Appa, Please! (AP-01 to AP-15)
+  { id: "AP-01", title: "Ep 1: Bekagilla, Adu Final", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)"], charSearch: ["appa", "ramesh", "father", "dad", "maga", "arjun", "son", "kid"], duration: "45-55s", platform: "IG Reel", language: "Kannada", product: "E-Cycle (General)" },
+  { id: "AP-02", title: "Ep 2: Hesru Kelid Mele...", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)"], charSearch: ["appa", "ramesh", "father", "dad", "maga", "arjun", "son", "kid"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "E-Cycle (General)" },
+  { id: "AP-03", title: "Ep 3: Amma Heldru...", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "Amma (Priya)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "amma", "priya", "mother"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "E-Cycle (General)" },
+  { id: "AP-04", title: "Ep 4: Phone Nodthiya, Cycle Beda", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)"], charSearch: ["appa", "ramesh", "father", "dad", "maga", "arjun", "son", "kid"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "E-Cycle (General)" },
+  { id: "AP-05", title: "Ep 5: Arjun Kelodu Nillisda", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)"], charSearch: ["appa", "ramesh", "father", "dad", "maga", "arjun", "son", "kid"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "E-Cycle (General)" },
+  { id: "AP-06", title: "Ep 6: Rahul ge Birthday ge Sigithu", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "Amma (Priya)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "amma", "priya", "mother"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "AP-07", title: "Ep 7: Naanu Hinge Idde Antha Gottilla", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)"], charSearch: ["appa", "ramesh", "father", "dad", "maga", "arjun", "son", "kid"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "E-Cycle (General)" },
+  { id: "AP-08", title: "Ep 8: Wife Heldlu — 'Just Do It'", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Amma (Priya)"], charSearch: ["appa", "ramesh", "father", "amma", "priya", "mother", "wife"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "E-Cycle (General)" },
+  { id: "AP-09", title: "Ep 9: Rs.999 Antha?", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)"], charSearch: ["appa", "ramesh", "father", "dad", "maga", "arjun", "son", "kid"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad X1" },
+  { id: "AP-10", title: "Ep 10: BCH Alli Yen Ide?", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "bch anna", "staff"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "Various E-Cycles" },
+  { id: "AP-11", title: "Ep 11: Test Ride Kodsi", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "bch anna", "staff"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "AP-12", title: "Ep 12: Speed Lock, Helmet, Warranty...", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "Amma (Priya)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "amma", "priya", "mother", "staff"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "AP-13", title: "Ep 13: Auto Driver ge E-Cycle", batch: "Appa Please!", characters: ["Appa (Ramesh)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "bch anna", "staff", "auto driver"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad X1" },
+  { id: "AP-14", title: "Ep 14: Amma Approve Aaytu", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "Amma (Priya)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "amma", "priya", "mother", "staff"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "AP-15", title: "Ep 15: Appa, Thank You", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "Amma (Priya)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "amma", "priya", "mother", "staff", "family"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+];
+
+const profiles = ["—", "BCH Main", "Wattson", "2nd Life", "Next.blr", "Doodle", "Raleigh BCH", "BCH Toyz", "Luxe"];
+
+const batchClass = {
+  "BCH Batch 1": "batch-b1",
+  "BCH Batch 2": "batch-b2",
+  "BCH Batch 3": "batch-b3",
+  "BCH Batch 4": "batch-b4",
+  "Power Scripts": "batch-power",
+  "Blocker Scripts": "batch-blocker",
+  "2XG Scripts 1-5": "batch-2xg",
+  "2XG Scripts 6-10": "batch-2xg",
+  "Viral Scripts": "batch-viral",
+  "Parent Viral": "batch-parent",
+  "Appa Please!": "batch-series",
+};
+
+// ========== LOCALSTORAGE ==========
+function loadState() {
+  try { return JSON.parse(localStorage.getItem('bch_dashboard_state') || '{}'); } catch { return {}; }
+}
+function saveState(state) {
+  localStorage.setItem('bch_dashboard_state', JSON.stringify(state));
+}
+
+let state = loadState();
+
+// ========== RENDER TABLE ==========
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  scripts.forEach((s, i) => {
+    const hookChecked = state[s.id + '_hooks'] ? 'checked' : '';
+    const shotChecked = state[s.id + '_shot'] ? 'checked' : '';
+    const profileVal = state[s.id + '_profile'] || '—';
+
+    const profileOptions = profiles.map(p =>
+      `<option value="${p}" ${profileVal === p ? 'selected' : ''}>${p}</option>`
+    ).join('');
+
+    const charTags = s.characters.map(c => `<span class="char-tag">${c}</span>`).join('');
+
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-id', s.id);
+    tr.setAttribute('data-batch', s.batch);
+    tr.setAttribute('data-chars', s.charSearch.join(' '));
+    tr.setAttribute('data-title', s.title.toLowerCase());
+    tr.innerHTML = `
+      <td style="color:#484f58;font-weight:600">${i + 1}</td>
+      <td style="font-weight:500;color:#f0f6fc;max-width:280px">${s.title}</td>
+      <td><span class="batch-tag ${batchClass[s.batch] || ''}">${s.batch}</span></td>
+      <td><div class="char-tags">${charTags}</div></td>
+      <td style="white-space:nowrap">${s.duration}</td>
+      <td style="white-space:nowrap">${s.platform}</td>
+      <td>${s.language}</td>
+      <td style="white-space:nowrap">${s.product}</td>
+      <td><select class="profile-select" onchange="setProfile('${s.id}', this.value)">${profileOptions}</select></td>
+      <td class="cb-cell"><input type="checkbox" ${hookChecked} onchange="toggleState('${s.id}_hooks', this.checked)"></td>
+      <td class="cb-cell"><input type="checkbox" ${shotChecked} onchange="toggleState('${s.id}_shot', this.checked)"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateStats();
+}
+
+// ========== STATE HANDLERS ==========
+function toggleState(key, val) {
+  state[key] = val;
+  saveState(state);
+  updateStats();
+}
+function setProfile(id, val) {
+  state[id + '_profile'] = val;
+  saveState(state);
+}
+function resetAll() {
+  if (confirm('Reset ALL checkboxes, profiles, and data? This cannot be undone.')) {
+    localStorage.removeItem('bch_dashboard_state');
+    state = {};
+    renderTable();
+  }
+}
+
+// ========== STATS ==========
+function updateStats() {
+  const total = scripts.length;
+  let hooks = 0, shot = 0;
+  scripts.forEach(s => {
+    if (state[s.id + '_hooks']) hooks++;
+    if (state[s.id + '_shot']) shot++;
+  });
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-hooks').textContent = hooks;
+  document.getElementById('stat-shot').textContent = shot;
+  document.getElementById('stat-pending').textContent = total - shot;
+}
+
+// ========== SMART SEARCH ==========
+const synonyms = {
+  'father': ['father', 'dad', 'appa', 'papa', 'ramesh'],
+  'mother': ['mother', 'mom', 'amma', 'maa', 'mummy', 'priya', 'wife'],
+  'kid': ['kid', 'child', 'son', 'daughter', 'boy', 'girl', 'teen', 'teen boy', 'maga', 'arjun'],
+  'grandparent': ['grandparent', 'grandmother', 'grandfather', 'ajji', 'thatha', 'granny', 'grandma', 'grandpa', 'elderly'],
+  'friend': ['friend', 'bro', 'buddy', 'mate'],
+  'brother': ['brother', 'sibling', 'anna', 'thambi', 'bhai'],
+  'solo': ['solo', 'alone', 'single', 'founder', 'self', '1 person'],
+  'staff': ['staff', 'bch anna', 'salesman', 'founder', 'expert'],
+};
+
+function parseSearchQuery(query) {
+  query = query.toLowerCase().trim();
+  if (!query) return null;
+
+  // Extract character requirements from natural language
+  const requirements = [];
+
+  // Pattern: "N role" e.g. "1 father", "2 kids", "1 mother"
+  const numberPattern = /(\d+)\s+(father|dad|appa|mother|mom|amma|kid|child|son|daughter|boy|girl|teen|friend|brother|sibling|grandparent|grandmother|grandfather|ajji|thatha|elderly|solo|founder|person)/gi;
+  let match;
+  while ((match = numberPattern.exec(query)) !== null) {
+    requirements.push({ count: parseInt(match[1]), role: match[2].toLowerCase() });
+  }
+
+  // Pattern: "age N years" e.g. "kid 4 years"
+  const agePattern = /(\d+)\s*years?/gi;
+
+  // If no number patterns found, try keyword matching
+  if (requirements.length === 0) {
+    // Check for role keywords without numbers
+    const roleWords = query.split(/[\s,&+]+/).filter(w => w.length > 1);
+    const foundRoles = [];
+    roleWords.forEach(word => {
+      for (const [canonical, syns] of Object.entries(synonyms)) {
+        if (syns.includes(word)) {
+          foundRoles.push(canonical);
+        }
+      }
+    });
+    if (foundRoles.length > 0) {
+      return { type: 'keywords', roles: foundRoles, raw: query };
+    }
+    // Fallback: text search
+    return { type: 'text', raw: query };
+  }
+
+  return { type: 'structured', requirements, raw: query };
+}
+
+function matchScript(script, parsed) {
+  if (!parsed) return true;
+
+  if (parsed.type === 'text') {
+    // Simple text search in title + characters + batch
+    const haystack = (script.title + ' ' + script.characters.join(' ') + ' ' + script.batch + ' ' + script.charSearch.join(' ') + ' ' + script.product).toLowerCase();
+    return haystack.includes(parsed.raw);
+  }
+
+  if (parsed.type === 'keywords') {
+    // Check if script has ALL mentioned roles
+    const charText = script.charSearch.join(' ');
+    return parsed.roles.every(role => {
+      const syns = synonyms[role] || [role];
+      return syns.some(s => charText.includes(s));
+    });
+  }
+
+  if (parsed.type === 'structured') {
+    // Check each requirement
+    const charText = script.charSearch.join(' ');
+    const characters = script.characters;
+
+    return parsed.requirements.every(req => {
+      // Map role to canonical
+      let canonical = req.role;
+      for (const [c, syns] of Object.entries(synonyms)) {
+        if (syns.includes(req.role)) { canonical = c; break; }
+      }
+
+      const syns = synonyms[canonical] || [canonical];
+
+      // Count how many characters match this role
+      let count = 0;
+      characters.forEach(char => {
+        const charLower = char.toLowerCase();
+        if (syns.some(s => charLower.includes(s))) count++;
+      });
+
+      // Also check charSearch for broader match
+      if (count === 0) {
+        if (syns.some(s => charText.includes(s))) count = 1;
+      }
+
+      return count >= req.count;
+    });
+  }
+
+  return true;
+}
+
+function applyFilters() {
+  const query = document.getElementById('search-input').value;
+  const batchFilter = document.getElementById('filter-batch').value;
+  const statusFilter = document.getElementById('filter-status').value;
+  const parsed = parseSearchQuery(query);
+
+  const rows = document.querySelectorAll('#table-body tr');
+  rows.forEach((row, i) => {
+    const script = scripts[i];
+    let visible = true;
+
+    // Smart search
+    if (!matchScript(script, parsed)) visible = false;
+
+    // Batch filter
+    if (batchFilter && script.batch !== batchFilter) visible = false;
+
+    // Status filter
+    if (statusFilter === 'pending' && state[script.id + '_shot']) visible = false;
+    if (statusFilter === 'hooks-done' && !state[script.id + '_hooks']) visible = false;
+    if (statusFilter === 'shot-done' && !state[script.id + '_shot']) visible = false;
+
+    row.classList.toggle('hidden', !visible);
+    row.classList.toggle('match-highlight', visible && query.length > 0);
+  });
+}
+
+// ========== EVENT LISTENERS ==========
+document.getElementById('search-input').addEventListener('input', applyFilters);
+document.getElementById('filter-batch').addEventListener('change', applyFilters);
+document.getElementById('filter-status').addEventListener('change', applyFilters);
+
+// ========== INIT ==========
+renderTable();
+</script>
+</body>
+</html>

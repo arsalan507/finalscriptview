@@ -91,6 +91,25 @@
   .script-title-link { cursor: pointer; text-decoration: none; border-bottom: 1px dashed #484f58; transition: all 0.15s; }
   .script-title-link:hover { color: #58a6ff !important; border-bottom-color: #58a6ff; }
 
+  /* Modal tabs */
+  .modal-tabs { display: flex; gap: 0; border-bottom: 1px solid #30363d; padding: 0 20px; background: #161b22; }
+  .modal-tab { padding: 10px 16px; font-size: 13px; font-weight: 600; color: #8b949e; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; background: none; border-top: none; border-left: none; border-right: none; }
+  .modal-tab:hover { color: #e6edf3; }
+  .modal-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+  .modal-tab.disabled { color: #484f58; cursor: not-allowed; opacity: 0.5; }
+  .modal-tab .tab-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
+  .tab-dot.green { background: #3fb950; }
+  .tab-dot.red { background: #f85149; }
+
+  /* Action buttons in table */
+  .action-btns { display: flex; gap: 4px; }
+  .action-btn { padding: 3px 8px; border-radius: 4px; border: 1px solid #30363d; background: #21262d; color: #8b949e; cursor: pointer; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; transition: all 0.15s; white-space: nowrap; }
+  .action-btn:hover { background: #30363d; color: #e6edf3; border-color: #484f58; }
+  .action-btn.has-content { color: #58a6ff; border-color: #1f3d5c; }
+  .action-btn.has-content:hover { background: #1a2332; }
+  .action-btn.no-content { color: #484f58; border-color: #21262d; cursor: default; opacity: 0.5; }
+  .action-btn.no-content:hover { background: #21262d; color: #484f58; }
+
   /* Responsive */
   @media (max-width: 768px) {
     .stats-bar { gap: 8px; }
@@ -110,6 +129,8 @@
 
 <div class="stats-bar" id="stats-bar">
   <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total Scripts</div></div>
+  <div class="stat-card"><div class="stat-num" id="stat-vh" style="color:#56d4dd">0</div><div class="stat-label">Visual Hooks</div></div>
+  <div class="stat-card"><div class="stat-num" id="stat-sp" style="color:#d2a8ff">0</div><div class="stat-label">Shoot Plans</div></div>
   <div class="stat-card"><div class="stat-num green" id="stat-hooks">0</div><div class="stat-label">Hooks Done</div></div>
   <div class="stat-card"><div class="stat-num orange" id="stat-shot">0</div><div class="stat-label">Shot Done</div></div>
   <div class="stat-card"><div class="stat-num purple" id="stat-pending">0</div><div class="stat-label">Pending</div></div>
@@ -152,6 +173,11 @@
       <h2 id="modal-title">Script</h2>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
+    <div class="modal-tabs" id="modal-tabs">
+      <button class="modal-tab active" data-tab="script" onclick="switchTab('script')">Script</button>
+      <button class="modal-tab" data-tab="visual-hook" onclick="switchTab('visual-hook')">Visual Hook<span class="tab-dot" id="dot-visual-hook"></span></button>
+      <button class="modal-tab" data-tab="shoot-plan" onclick="switchTab('shoot-plan')">Shoot Plan<span class="tab-dot" id="dot-shoot-plan"></span></button>
+    </div>
     <div class="modal-body" id="modal-body">
       <div class="modal-loading">Loading script...</div>
     </div>
@@ -170,6 +196,7 @@
       <th>Platform</th>
       <th>Language</th>
       <th>Product</th>
+      <th>View</th>
       <th>Profile</th>
       <th>Hooks</th>
       <th>Shot</th>
@@ -311,7 +338,7 @@ function saveState(state) {
 
 let state = loadState();
 
-// ========== SCRIPT FILE MAPPING ==========
+// ========== FILE MAPPINGS ==========
 const batchToFile = {
   "BCH Batch 1": "shoot plan/BCH_20_Scripts_Batch1.md",
   "BCH Batch 2": "shoot plan/BCH_20_Scripts_Batch2.md",
@@ -326,7 +353,23 @@ const batchToFile = {
   "Appa Please!": "shoot plan/BCH_Mini_Series_APPA_PLEASE.md",
 };
 
+const batchToVisualHookFile = {
+  "BCH Batch 1": "visual hooks/visual_hooks_2026-02-08_batch1.md",
+  "BCH Batch 2": "visual hooks/visual_hooks_2026-02-08_batch2.md",
+  "BCH Batch 3": "visual hooks/visual_hooks_2026-02-08_batch3.md",
+  "BCH Batch 4": "visual hooks/visual_hooks_2026-02-08_batch4.md",
+};
+
+const batchToShootPlanFile = {
+  "BCH Batch 1": "shoot plan/shoot_plan_2026-02-08_batch1.md",
+  "BCH Batch 2": "shoot plan/shoot_plan_2026-02-08_batch2.md",
+  "BCH Batch 3": "shoot plan/shoot_plan_2026-02-08_batch3.md",
+  "BCH Batch 4": "shoot plan/shoot_plan_2026-02-08_batch4.md",
+};
+
 const fileCache = {};
+let currentModalIndex = null;
+let currentTab = 'script';
 
 function closeModal() {
   document.getElementById('script-modal').classList.remove('active');
@@ -398,16 +441,8 @@ function formatMdToHtml(md) {
     .replace(/\n/g, '<br>');
 }
 
-async function openScript(index) {
-  const script = scripts[index];
-  const file = batchToFile[script.batch];
-  if (!file) {
-    openModal(script.title, '<div style="color:#8b949e">Script file not mapped for this batch.</div>');
-    return;
-  }
-
-  openModal(script.title, '<div class="modal-loading">Loading script...</div>');
-
+async function fetchFileSection(file, scriptTitle) {
+  if (!file) return null;
   try {
     let text;
     if (fileCache[file]) {
@@ -418,11 +453,83 @@ async function openScript(index) {
       text = await resp.text();
       fileCache[file] = text;
     }
-    const section = extractScriptSection(text, script.title);
-    document.getElementById('modal-body').innerHTML = formatMdToHtml(section);
+    return extractScriptSection(text, scriptTitle);
   } catch (err) {
-    document.getElementById('modal-body').innerHTML = '<div style="color:#f85149">Error loading script: ' + err.message + '</div>';
+    return '__ERROR__' + err.message;
   }
+}
+
+function updateTabDots(index) {
+  const script = scripts[index];
+  const hasHook = !!batchToVisualHookFile[script.batch];
+  const hasShoot = !!batchToShootPlanFile[script.batch];
+
+  const dotHook = document.getElementById('dot-visual-hook');
+  const dotShoot = document.getElementById('dot-shoot-plan');
+  dotHook.className = 'tab-dot ' + (hasHook ? 'green' : 'red');
+  dotShoot.className = 'tab-dot ' + (hasShoot ? 'green' : 'red');
+
+  // Enable/disable tabs visually
+  document.querySelector('[data-tab="visual-hook"]').classList.toggle('disabled', !hasHook);
+  document.querySelector('[data-tab="shoot-plan"]').classList.toggle('disabled', !hasShoot);
+}
+
+async function loadTabContent(tab, index) {
+  const script = scripts[index];
+  const body = document.getElementById('modal-body');
+  let file;
+
+  if (tab === 'script') {
+    file = batchToFile[script.batch];
+  } else if (tab === 'visual-hook') {
+    file = batchToVisualHookFile[script.batch];
+  } else if (tab === 'shoot-plan') {
+    file = batchToShootPlanFile[script.batch];
+  }
+
+  if (!file) {
+    body.innerHTML = '<div style="color:#8b949e; padding: 20px; text-align: center;">' +
+      '<div style="font-size: 32px; margin-bottom: 12px;">—</div>' +
+      '<div>No ' + (tab === 'visual-hook' ? 'visual hook' : 'shoot plan') + ' created yet for <strong>' + script.batch + '</strong></div>' +
+      '<div style="margin-top: 8px; font-size: 12px; color: #484f58;">Available for: BCH Batch 1, 2, 3, 4</div></div>';
+    return;
+  }
+
+  body.innerHTML = '<div class="modal-loading">Loading...</div>';
+  const content = await fetchFileSection(file, script.title);
+  if (content && content.startsWith('__ERROR__')) {
+    body.innerHTML = '<div style="color:#f85149">Error: ' + content.replace('__ERROR__', '') + '</div>';
+  } else if (content) {
+    body.innerHTML = formatMdToHtml(content);
+  } else {
+    body.innerHTML = '<div style="color:#8b949e">Content not found.</div>';
+  }
+}
+
+function switchTab(tab) {
+  if (currentModalIndex === null) return;
+  const script = scripts[currentModalIndex];
+
+  // Don't switch to disabled tabs
+  if (tab === 'visual-hook' && !batchToVisualHookFile[script.batch]) return;
+  if (tab === 'shoot-plan' && !batchToShootPlanFile[script.batch]) return;
+
+  currentTab = tab;
+  document.querySelectorAll('.modal-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  loadTabContent(tab, currentModalIndex);
+}
+
+async function openScript(index, tab) {
+  currentModalIndex = index;
+  currentTab = tab || 'script';
+  const script = scripts[index];
+
+  openModal(script.title, '<div class="modal-loading">Loading...</div>');
+  updateTabDots(index);
+
+  // Set active tab
+  document.querySelectorAll('.modal-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === currentTab));
+  await loadTabContent(currentTab, index);
 }
 
 // Close modal on Escape
@@ -448,6 +555,9 @@ function renderTable() {
     tr.setAttribute('data-batch', s.batch);
     tr.setAttribute('data-chars', s.charSearch.join(' '));
     tr.setAttribute('data-title', s.title.toLowerCase());
+    const hasHook = !!batchToVisualHookFile[s.batch];
+    const hasShoot = !!batchToShootPlanFile[s.batch];
+
     tr.innerHTML = `
       <td style="color:#484f58;font-weight:600">${i + 1}</td>
       <td style="font-weight:500;color:#f0f6fc;max-width:280px"><span class="script-title-link" onclick="openScript(${i})">${s.title}</span></td>
@@ -457,6 +567,10 @@ function renderTable() {
       <td style="white-space:nowrap">${s.platform}</td>
       <td>${s.language}</td>
       <td style="white-space:nowrap">${s.product}</td>
+      <td><div class="action-btns">
+        <button class="action-btn ${hasHook ? 'has-content' : 'no-content'}" onclick="${hasHook ? `openScript(${i},'visual-hook')` : ''}" title="${hasHook ? 'View visual hook' : 'No visual hook yet'}">VH</button>
+        <button class="action-btn ${hasShoot ? 'has-content' : 'no-content'}" onclick="${hasShoot ? `openScript(${i},'shoot-plan')` : ''}" title="${hasShoot ? 'View shoot plan' : 'No shoot plan yet'}">SP</button>
+      </div></td>
       <td><select class="profile-select" onchange="setProfile('${s.id}', this.value)">${profileOptions}</select></td>
       <td class="cb-cell"><input type="checkbox" ${hookChecked} onchange="toggleState('${s.id}_hooks', this.checked)"></td>
       <td class="cb-cell"><input type="checkbox" ${shotChecked} onchange="toggleState('${s.id}_shot', this.checked)"></td>
@@ -487,12 +601,16 @@ function resetAll() {
 // ========== STATS ==========
 function updateStats() {
   const total = scripts.length;
-  let hooks = 0, shot = 0;
+  let hooks = 0, shot = 0, vhCount = 0, spCount = 0;
   scripts.forEach(s => {
     if (state[s.id + '_hooks']) hooks++;
     if (state[s.id + '_shot']) shot++;
+    if (batchToVisualHookFile[s.batch]) vhCount++;
+    if (batchToShootPlanFile[s.batch]) spCount++;
   });
   document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-vh').textContent = vhCount + '/' + total;
+  document.getElementById('stat-sp').textContent = spCount + '/' + total;
   document.getElementById('stat-hooks').textContent = hooks;
   document.getElementById('stat-shot').textContent = shot;
   document.getElementById('stat-pending').textContent = total - shot;

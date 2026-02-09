@@ -55,6 +55,7 @@
   .batch-viral { background: #2d1f1f; color: #ff7b72; }
   .batch-parent { background: #1f2d2d; color: #56d4dd; }
   .batch-series { background: #3d2d3d; color: #d2a8ff; }
+  .batch-doodle { background: #1f3d3d; color: #56d4d4; }
 
   /* Profile select */
   .profile-select { padding: 4px 8px; background: #21262d; border: 1px solid #30363d; border-radius: 4px; color: #e6edf3; font-size: 12px; cursor: pointer; width: 100%; }
@@ -310,6 +311,18 @@ const scripts = [
   { id: "AP-13", title: "Ep 13: Auto Driver ge E-Cycle", batch: "Appa Please!", characters: ["Appa (Ramesh)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "bch anna", "staff", "auto driver"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad X1" },
   { id: "AP-14", title: "Ep 14: Amma Approve Aaytu", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "Amma (Priya)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "amma", "priya", "mother", "staff"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
   { id: "AP-15", title: "Ep 15: Appa, Thank You", batch: "Appa Please!", characters: ["Appa (Ramesh)", "Maga (Arjun)", "Amma (Priya)", "BCH Anna (Staff)"], charSearch: ["appa", "ramesh", "father", "maga", "arjun", "son", "amma", "priya", "mother", "staff", "family"], duration: "30-60s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+
+  // Doodle Kids — Fresh 10 (DK-01 to DK-10)
+  { id: "DK-01", title: "Phone Costs More Than Your Ride", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "father", "kid"], duration: "55s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-02", title: "365 Days — The Streak", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "kid", "friend"], duration: "55s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-03", title: "Unboxing Nightmare — The Sequel", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "kid", "online"], duration: "58s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-04", title: "Ajji Wants One Too", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "ajji", "grandma", "grandmother"], duration: "57s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-05", title: "100 KM Bet", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "kid", "challenge", "bet"], duration: "58s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-06", title: "Report Card Surprise", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "father", "kid", "school", "report"], duration: "56s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-07", title: "Helmet Cam — Amma POV", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "amma", "mother", "safety", "helmet"], duration: "58s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-08", title: "₹153 Per Day — Your Biryani Costs More", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "biryani", "price", "emi"], duration: "55s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-09", title: "Speed Lock Live Test", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "speed", "safety", "lock"], duration: "56s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
+  { id: "DK-10", title: "Birthday Fund", batch: "Doodle Kids", characters: ["Syed", "Zubair", "Sami"], charSearch: ["syed", "zubair", "sami", "birthday", "gift", "friends"], duration: "59s", platform: "IG Reel", language: "Kannada", product: "EMotorad Doodle" },
 ];
 
 const profiles = ["—", "BCH Main", "Wattson", "2nd Life", "Next.blr", "Doodle", "Raleigh BCH", "BCH Toyz", "Luxe"];
@@ -326,6 +339,7 @@ const batchClass = {
   "Viral Scripts": "batch-viral",
   "Parent Viral": "batch-parent",
   "Appa Please!": "batch-series",
+  "Doodle Kids": "batch-doodle",
 };
 
 // ========== LOCALSTORAGE ==========
@@ -340,31 +354,34 @@ let state = loadState();
 
 // ========== FILE MAPPINGS ==========
 const batchToFile = {
-  "BCH Batch 1": "shoot plan/BCH_20_Scripts_Batch1.md",
-  "BCH Batch 2": "shoot plan/BCH_20_Scripts_Batch2.md",
-  "BCH Batch 3": "shoot plan/BCH_20_Scripts_Batch3.md",
-  "BCH Batch 4": "shoot plan/BCH_20_Scripts_Batch4.md",
-  "Power Scripts": "shoot plan/BCH_Power_Scripts_Feb2026.md",
-  "Blocker Scripts": "shoot plan/BCH_Blocker_to_Buyer_Scripts.md",
-  "2XG Scripts 1-5": "shoot plan/scripts_1_to_5_content_paralysis.md",
-  "2XG Scripts 6-10": "shoot plan/scripts_6_to_10_content_paralysis.md",
-  "Viral Scripts": "shoot plan/BCH_10_Viral_Scripts.md",
-  "Parent Viral": "shoot plan/BCH_Viral_Scripts_10.md",
-  "Appa Please!": "shoot plan/BCH_Mini_Series_APPA_PLEASE.md",
+  "BCH Batch 1": "3_scripts/BCH_20_Scripts_Batch1.md",
+  "BCH Batch 2": "3_scripts/BCH_20_Scripts_Batch2.md",
+  "BCH Batch 3": "3_scripts/BCH_20_Scripts_Batch3.md",
+  "BCH Batch 4": "3_scripts/BCH_20_Scripts_Batch4.md",
+  "Power Scripts": "3_scripts/BCH_Power_Scripts_Feb2026.md",
+  "Blocker Scripts": "3_scripts/BCH_Blocker_to_Buyer_Scripts.md",
+  "2XG Scripts 1-5": "3_scripts/scripts_1_to_5_content_paralysis.md",
+  "2XG Scripts 6-10": "3_scripts/scripts_6_to_10_content_paralysis.md",
+  "Viral Scripts": "3_scripts/BCH_10_Viral_Scripts.md",
+  "Parent Viral": "3_scripts/BCH_Viral_Scripts_10.md",
+  "Appa Please!": "3_scripts/BCH_Mini_Series_APPA_PLEASE.md",
+  "Doodle Kids": "3_scripts/BCH_Doodle_Kids_Fresh10.md",
 };
 
 const batchToVisualHookFile = {
-  "BCH Batch 1": "visual hooks/visual_hooks_2026-02-08_batch1.md",
-  "BCH Batch 2": "visual hooks/visual_hooks_2026-02-08_batch2.md",
-  "BCH Batch 3": "visual hooks/visual_hooks_2026-02-08_batch3.md",
-  "BCH Batch 4": "visual hooks/visual_hooks_2026-02-08_batch4.md",
+  "BCH Batch 1": "4_visual_hooks/visual_hooks_2026-02-08_batch1.md",
+  "BCH Batch 2": "4_visual_hooks/visual_hooks_2026-02-08_batch2.md",
+  "BCH Batch 3": "4_visual_hooks/visual_hooks_2026-02-08_batch3.md",
+  "BCH Batch 4": "4_visual_hooks/visual_hooks_2026-02-08_batch4.md",
+  "Doodle Kids": "4_visual_hooks/visual_hooks_2026-02-09_doodle_kids.md",
 };
 
 const batchToShootPlanFile = {
-  "BCH Batch 1": "shoot plan/shoot_plan_2026-02-08_batch1.md",
-  "BCH Batch 2": "shoot plan/shoot_plan_2026-02-08_batch2.md",
-  "BCH Batch 3": "shoot plan/shoot_plan_2026-02-08_batch3.md",
-  "BCH Batch 4": "shoot plan/shoot_plan_2026-02-08_batch4.md",
+  "BCH Batch 1": "5_shoot_plan/shoot_plan_2026-02-08_batch1.md",
+  "BCH Batch 2": "5_shoot_plan/shoot_plan_2026-02-08_batch2.md",
+  "BCH Batch 3": "5_shoot_plan/shoot_plan_2026-02-08_batch3.md",
+  "BCH Batch 4": "5_shoot_plan/shoot_plan_2026-02-08_batch4.md",
+  "Doodle Kids": "5_shoot_plan/shoot_plan_2026-02-09_doodle_kids.md",
 };
 
 const fileCache = {};

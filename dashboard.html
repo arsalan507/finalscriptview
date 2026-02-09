@@ -77,6 +77,20 @@
   .btn-danger { border-color: #f85149; color: #f85149; }
   .btn-danger:hover { background: #3d1f1f; }
 
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: flex-start; padding: 40px 20px; overflow-y: auto; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: #161b22; border: 1px solid #30363d; border-radius: 12px; max-width: 800px; width: 100%; max-height: 85vh; overflow-y: auto; position: relative; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #30363d; position: sticky; top: 0; background: #161b22; z-index: 1; border-radius: 12px 12px 0 0; }
+  .modal-header h2 { font-size: 16px; color: #f0f6fc; margin: 0; }
+  .modal-close { background: none; border: none; color: #8b949e; font-size: 24px; cursor: pointer; padding: 4px 8px; border-radius: 4px; line-height: 1; }
+  .modal-close:hover { color: #f0f6fc; background: #21262d; }
+  .modal-body { padding: 20px; font-size: 14px; line-height: 1.7; color: #e6edf3; white-space: pre-wrap; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .modal-body .section-label { color: #58a6ff; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 16px; display: block; }
+  .modal-loading { padding: 40px; text-align: center; color: #8b949e; }
+  .script-title-link { cursor: pointer; text-decoration: none; border-bottom: 1px dashed #484f58; transition: all 0.15s; }
+  .script-title-link:hover { color: #58a6ff !important; border-bottom-color: #58a6ff; }
+
   /* Responsive */
   @media (max-width: 768px) {
     .stats-bar { gap: 8px; }
@@ -128,6 +142,19 @@
   </div>
   <div class="search-hint">
     Smart search examples: <span>1 son and father</span> <span>2 friends</span> <span>1 mother and 1 kid</span> <span>syed bhai alone</span> <span>arsalan</span> <span>zubair</span> <span>appa please</span>
+  </div>
+</div>
+
+<!-- Script Modal -->
+<div class="modal-overlay" id="script-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Script</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body">
+      <div class="modal-loading">Loading script...</div>
+    </div>
   </div>
 </div>
 
@@ -284,6 +311,123 @@ function saveState(state) {
 
 let state = loadState();
 
+// ========== SCRIPT FILE MAPPING ==========
+const batchToFile = {
+  "BCH Batch 1": "shoot plan/BCH_20_Scripts_Batch1.md",
+  "BCH Batch 2": "shoot plan/BCH_20_Scripts_Batch2.md",
+  "BCH Batch 3": "shoot plan/BCH_20_Scripts_Batch3.md",
+  "BCH Batch 4": "shoot plan/BCH_20_Scripts_Batch4.md",
+  "Power Scripts": "shoot plan/BCH_Power_Scripts_Feb2026.md",
+  "Blocker Scripts": "shoot plan/BCH_Blocker_to_Buyer_Scripts.md",
+  "2XG Scripts 1-5": "shoot plan/scripts_1_to_5_content_paralysis.md",
+  "2XG Scripts 6-10": "shoot plan/scripts_6_to_10_content_paralysis.md",
+  "Viral Scripts": "shoot plan/BCH_10_Viral_Scripts.md",
+  "Parent Viral": "shoot plan/BCH_Viral_Scripts_10.md",
+  "Appa Please!": "shoot plan/BCH_Mini_Series_APPA_PLEASE.md",
+};
+
+const fileCache = {};
+
+function closeModal() {
+  document.getElementById('script-modal').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function openModal(title, content) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = content;
+  document.getElementById('script-modal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function extractScriptSection(fullText, scriptTitle) {
+  // Normalize for matching
+  const lines = fullText.split('\n');
+  const titleLower = scriptTitle.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+  // Try to find the line containing this script's title
+  let startIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const lineLower = lines[i].toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+    // Match if the line contains a significant portion of the title
+    const titleWords = titleLower.split(/\s+/).filter(w => w.length > 2);
+    const matchCount = titleWords.filter(w => lineLower.includes(w)).length;
+    if (matchCount >= Math.max(2, titleWords.length * 0.6)) {
+      // Check if this looks like a heading (SCRIPT, #, title line)
+      if (lines[i].match(/^(#{1,3}\s|SCRIPT\s|Ep\s|\*\*)/i) || (startIdx === -1 && matchCount >= titleWords.length * 0.8)) {
+        startIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (startIdx === -1) {
+    // Fallback: search for any partial match
+    for (let i = 0; i < lines.length; i++) {
+      const lineLower = lines[i].toLowerCase();
+      const titleWords = titleLower.split(/\s+/).filter(w => w.length > 3);
+      if (titleWords.length > 0 && titleWords.filter(w => lineLower.includes(w)).length >= Math.ceil(titleWords.length * 0.5)) {
+        startIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (startIdx === -1) return fullText.substring(0, 3000) + '\n\n[Full file shown — specific section not found]';
+
+  // Find end: next SCRIPT heading or end of relevant section
+  let endIdx = lines.length;
+  for (let i = startIdx + 3; i < lines.length; i++) {
+    if (lines[i].match(/^(#{1,3}\s*SCRIPT\s|SCRIPT\s+\d|#{1,3}\s*Ep\s|^---\s*$)/i) && i > startIdx + 10) {
+      endIdx = i;
+      break;
+    }
+  }
+
+  return lines.slice(startIdx, endIdx).join('\n').trim();
+}
+
+function formatMdToHtml(md) {
+  return md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^### (.+)$/gm, '<span class="section-label">$1</span>')
+    .replace(/^## (.+)$/gm, '<span class="section-label" style="font-size:15px">$1</span>')
+    .replace(/^# (.+)$/gm, '<span class="section-label" style="font-size:17px">$1</span>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f0f6fc">$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #30363d;margin:12px 0">')
+    .replace(/\n/g, '<br>');
+}
+
+async function openScript(index) {
+  const script = scripts[index];
+  const file = batchToFile[script.batch];
+  if (!file) {
+    openModal(script.title, '<div style="color:#8b949e">Script file not mapped for this batch.</div>');
+    return;
+  }
+
+  openModal(script.title, '<div class="modal-loading">Loading script...</div>');
+
+  try {
+    let text;
+    if (fileCache[file]) {
+      text = fileCache[file];
+    } else {
+      const resp = await fetch(encodeURI(file));
+      if (!resp.ok) throw new Error('File not found: ' + resp.status);
+      text = await resp.text();
+      fileCache[file] = text;
+    }
+    const section = extractScriptSection(text, script.title);
+    document.getElementById('modal-body').innerHTML = formatMdToHtml(section);
+  } catch (err) {
+    document.getElementById('modal-body').innerHTML = '<div style="color:#f85149">Error loading script: ' + err.message + '</div>';
+  }
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
 // ========== RENDER TABLE ==========
 function renderTable() {
   const tbody = document.getElementById('table-body');
@@ -306,7 +450,7 @@ function renderTable() {
     tr.setAttribute('data-title', s.title.toLowerCase());
     tr.innerHTML = `
       <td style="color:#484f58;font-weight:600">${i + 1}</td>
-      <td style="font-weight:500;color:#f0f6fc;max-width:280px">${s.title}</td>
+      <td style="font-weight:500;color:#f0f6fc;max-width:280px"><span class="script-title-link" onclick="openScript(${i})">${s.title}</span></td>
       <td><span class="batch-tag ${batchClass[s.batch] || ''}">${s.batch}</span></td>
       <td><div class="char-tags">${charTags}</div></td>
       <td style="white-space:nowrap">${s.duration}</td>
